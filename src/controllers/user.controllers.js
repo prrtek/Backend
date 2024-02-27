@@ -2,7 +2,7 @@ import asyncHandler from "../utils/asyncHandler.js";
 import ApiError from "../utils/ApiError.js";
 import User from "../models/User.js";
 import { uploadOnCloudinary } from "../utils/cloudnary.js";
-
+import jwt from "jsonwebtoken";
 import ApiResponse from "../utils/ApiResponse.js";
 
 const genrateAccessandRefreshToken = async (userId) => {
@@ -87,7 +87,7 @@ const loginUser = asyncHandler(async (req, res) => {
   //send cookie
 
   const { email, password, username } = req.body;
-  if (!email || !username) {
+  if (!email && !username) {
     throw new ApiError(400, "Please provide email or username");
   }
   const user = await User.findOne({ $or: [{ email }, { username }] });
@@ -149,4 +149,50 @@ const logoutUser = asyncHandler(async (req, res) => {
     });
 });
 
-export { registerUser, loginUser, logoutUser };
+const refreshAccessToken = asyncHandler(async (req, res) => {
+  const incomingRefreshToken =
+    req.cookies.refreshToken || req.body.refreshToken;
+
+  if (!incomingRefreshToken) {
+    throw new ApiError(400, "Please provide refresh token");
+  }
+
+  try {
+    const decodedToken = jwt.verify(
+      incomingRefreshToken,
+      process.env.REFRESH_TOKEN_SECRET
+    );
+
+    const user = User.findById(decodedToken._id);
+
+    if (!user) {
+      throw new ApiError(404, "User not found");
+    }
+
+    if (user?.refreshToken !== incomingRefreshToken) {
+      throw new ApiError(400, "Invalid refresh token");
+    }
+
+    const options = {
+      httpOnly: true,
+      secure: true,
+    };
+
+    const { accessToken, newrefreshToken } = await genrateAccessandRefreshToken(
+      user._id
+    );
+
+    return res
+      .status(200)
+      .cookie("accessToken", accessToken, options)
+      .cookie("refreshToken", newrefreshToken, options)
+      .json({
+        status: "success",
+        message: "User logged in successfully",
+      });
+  } catch (error) {
+    throw new ApiError(400, "Invalid refresh token");
+  }
+});
+
+export { registerUser, loginUser, logoutUser, refreshAccessToken };
