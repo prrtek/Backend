@@ -143,10 +143,11 @@ const logoutUser = asyncHandler(async (req, res) => {
     .status(200)
     .clearCookie("accessToken", options)
     .clearCookie("refreshToken", options)
-    .json({
-      status: "success",
-      message: "User logged out successfully",
-    });
+    .json(
+      new ApiResponse(200, "User logged out successfully", {
+        status: "success",
+      })
+    );
 });
 
 const refreshAccessToken = asyncHandler(async (req, res) => {
@@ -220,7 +221,7 @@ const changeCurrentPassword = asyncHandler(async (req, res) => {
 const getCurrentUser = asyncHandler(async (req, res) => {
   return res
     .status(200)
-    .json(200, req.user, "current user fetched succesfully");
+    .json(new ApiResponse(200, "Current user fetched successfully", req.user));
 });
 
 const updateAccountDetails = asyncHandler(async (req, res) => {
@@ -279,4 +280,5 @@ export {
   changeCurrentPassword,
   updateAccountDetails,
   updateUserAvatar,
+  updateUserCoverImage,
 };
